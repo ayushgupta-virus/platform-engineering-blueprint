@@ -1,0 +1,25 @@
+# Code owners for this repository.
+# These owners are automatically requested for review on matching pull requests.
+# Order matters: the last matching pattern takes precedence.
+# Docs: https://docs.github.com/articles/about-code-owners
+
+# Default owner for everything in the repo
+*                       @ayushgupta-virus
+
+# Application code
+/app/                   @ayushgupta-virus
+
+# Infrastructure as Code
+/terraform/             @ayushgupta-virus
+
+# Kubernetes manifests
+/k8s/                   @ayushgupta-virus
+
+# CI/CD and repository automation
+/.github/               @ayushgupta-virus
+
+# Monitoring, dashboards and alerts
+/monitoring/            @ayushgupta-virus
+
+# Documentation
+/docs/                  @ayushgupta-virus
