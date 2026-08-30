@@ -1,0 +1,46 @@
+# Prometheus alerting rules for the application (RED signals).
+# Apply to Azure Monitor managed Prometheus as a Prometheus rule group, or load
+# into a self-managed Prometheus. Notifications route through the Azure Monitor
+# action group provisioned by Terraform (email + Slack webhook).
+groups:
+  - name: todo-api.rules
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          100 * sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+            / clamp_min(sum(rate(http_requests_total[5m])), 1) > 5
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "todo-api 5xx error rate above 5%"
+          description: "The 5xx error rate has exceeded 5% for 10 minutes."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "todo-api p95 latency above 1s"
+          description: "95th percentile request latency has exceeded 1s for 10 minutes."
+
+      - alert: NoTraffic
+        expr: sum(rate(http_requests_total[10m])) == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "todo-api is receiving no traffic"
+          description: "No HTTP requests recorded for 15 minutes — possible outage or routing issue."
+
+      - alert: PodNotReady
+        expr: |
+          sum(kube_pod_status_ready{namespace="app", condition="true"}) < 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No ready todo-api pods"
+          description: "Fewer than one ready pod in the app namespace for 5 minutes."

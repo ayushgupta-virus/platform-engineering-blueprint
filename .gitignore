@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+# Build / coverage output
+coverage/
+dist/
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# Terraform (see terraform/.gitignore for the detailed set)
+*.tfstate
+*.tfstate.*
+.terraform/
+# Logs
+*.log

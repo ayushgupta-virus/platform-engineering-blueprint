@@ -1,0 +1,127 @@
+name: CD
+
+# On merge to main: build & push the image to ACR, deploy to staging, then
+# deploy to production behind a manual approval (GitHub Environment gate).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "k8s/**"
+      - ".github/workflows/cd.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # OIDC federated login to Azure
+
+env:
+  IMAGE_NAME: todo-api
+
+jobs:
+  build-push:
+    name: Build & push image
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Compute image tag
+        id: meta
+        run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push to ACR
+        run: |
+          az acr login --name "${{ vars.ACR_NAME }}"
+          IMAGE="${{ vars.ACR_LOGIN_SERVER }}/${IMAGE_NAME}"
+          docker build -t "${IMAGE}:${{ steps.meta.outputs.tag }}" -t "${IMAGE}:latest" ./app
+          docker push "${IMAGE}:${{ steps.meta.outputs.tag }}"
+          docker push "${IMAGE}:latest"
+
+      - name: Scan pushed image (gate on CRITICAL)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: image
+          image-ref: ${{ vars.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+  deploy-staging:
+    name: Deploy to staging
+    runs-on: ubuntu-latest
+    needs: build-push
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy
+        uses: ./.github/actions/deploy-aks
+        with:
+          overlay: staging
+          resource_group: ${{ vars.STAGING_RESOURCE_GROUP }}
+          cluster_name: ${{ vars.STAGING_AKS_NAME }}
+          acr_login_server: ${{ vars.ACR_LOGIN_SERVER }}
+          image_tag: ${{ needs.build-push.outputs.image_tag }}
+          pg_host: ${{ vars.STAGING_PGHOST }}
+          pg_user: ${{ vars.STAGING_PGUSER }}
+          workload_client_id: ${{ vars.STAGING_WORKLOAD_CLIENT_ID }}
+          keyvault_name: ${{ vars.STAGING_KEYVAULT_NAME }}
+          tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+
+  deploy-production:
+    name: Deploy to production
+    runs-on: ubuntu-latest
+    needs: [build-push, deploy-staging]
+    # The "production" environment is configured with required reviewers in
+    # GitHub, which enforces the manual approval step before this job runs.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy
+        uses: ./.github/actions/deploy-aks
+        with:
+          overlay: prod
+          resource_group: ${{ vars.PROD_RESOURCE_GROUP }}
+          cluster_name: ${{ vars.PROD_AKS_NAME }}
+          acr_login_server: ${{ vars.PROD_ACR_LOGIN_SERVER }}
+          image_tag: ${{ needs.build-push.outputs.image_tag }}
+          pg_host: ${{ vars.PROD_PGHOST }}
+          pg_user: ${{ vars.PROD_PGUSER }}
+          workload_client_id: ${{ vars.PROD_WORKLOAD_CLIENT_ID }}
+          keyvault_name: ${{ vars.PROD_KEYVAULT_NAME }}
+          tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+
+  notify:
+    name: Notify on failure
+    runs-on: ubuntu-latest
+    needs: [build-push, deploy-staging, deploy-production]
+    if: failure()
+    steps:
+      - name: Slack notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          [ -z "$SLACK_WEBHOOK_URL" ] && exit 0
+          curl -sf -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\":rotating_light: CD failed for *${GITHUB_REPOSITORY}* — <${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}|view run>\"}" \
+            "$SLACK_WEBHOOK_URL"

@@ -1,0 +1,74 @@
+name: Deploy to AKS
+description: Renders the kustomize overlay and applies it to an AKS cluster.
+
+inputs:
+  overlay:
+    description: Kustomize overlay directory under k8s/overlays.
+    required: true
+  resource_group:
+    description: AKS resource group.
+    required: true
+  cluster_name:
+    description: AKS cluster name.
+    required: true
+  acr_login_server:
+    description: ACR login server (registry host).
+    required: true
+  image_tag:
+    description: Image tag to deploy.
+    required: true
+  pg_host:
+    description: PostgreSQL private FQDN.
+    required: true
+  pg_user:
+    description: PostgreSQL user.
+    required: true
+  workload_client_id:
+    description: Workload identity client id.
+    required: true
+  keyvault_name:
+    description: Key Vault name.
+    required: true
+  tenant_id:
+    description: Azure tenant id.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Get AKS credentials
+      shell: bash
+      run: |
+        az aks get-credentials \
+          --resource-group "${{ inputs.resource_group }}" \
+          --name "${{ inputs.cluster_name }}" \
+          --overwrite-existing
+
+    - name: Substitute overlay placeholders
+      shell: bash
+      working-directory: k8s/overlays/${{ inputs.overlay }}
+      run: |
+        sed -i \
+          -e "s|__PGHOST__|${{ inputs.pg_host }}|g" \
+          -e "s|__PGUSER__|${{ inputs.pg_user }}|g" \
+          -e "s|__WORKLOAD_CLIENT_ID__|${{ inputs.workload_client_id }}|g" \
+          -e "s|__KEYVAULT_NAME__|${{ inputs.keyvault_name }}|g" \
+          -e "s|__TENANT_ID__|${{ inputs.tenant_id }}|g" \
+          kustomization.yaml
+
+    - name: Set image
+      shell: bash
+      working-directory: k8s/overlays/${{ inputs.overlay }}
+      run: |
+        kustomize edit set image \
+          todo-api=${{ inputs.acr_login_server }}/todo-api:${{ inputs.image_tag }}
+
+    - name: Apply manifests
+      shell: bash
+      run: |
+        kubectl apply -k k8s/overlays/${{ inputs.overlay }}
+
+    - name: Wait for rollout
+      shell: bash
+      run: |
+        kubectl -n app rollout status deployment/todo-api --timeout=180s

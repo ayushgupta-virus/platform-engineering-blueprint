@@ -1,0 +1,64 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: app
+
+resources:
+  - ../../base
+
+images:
+  - name: todo-api
+    newName: acrplatblueprod.azurecr.io/todo-api
+    newTag: latest
+
+patches:
+  - target:
+      kind: ConfigMap
+      name: todo-api-config
+    patch: |-
+      - op: replace
+        path: /data/APP_ENV
+        value: prod
+      - op: add
+        path: /data/PGHOST
+        value: __PGHOST__
+      - op: add
+        path: /data/PGUSER
+        value: __PGUSER__
+  - target:
+      kind: ServiceAccount
+      name: todo-api
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/azure.workload.identity~1client-id
+        value: __WORKLOAD_CLIENT_ID__
+  - target:
+      kind: SecretProviderClass
+      name: todo-api-kv
+    patch: |-
+      - op: replace
+        path: /spec/parameters/clientID
+        value: __WORKLOAD_CLIENT_ID__
+      - op: replace
+        path: /spec/parameters/keyvaultName
+        value: __KEYVAULT_NAME__
+      - op: replace
+        path: /spec/parameters/tenantId
+        value: __TENANT_ID__
+  - target:
+      kind: Deployment
+      name: todo-api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 4
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: todo-api
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 4
+      - op: replace
+        path: /spec/maxReplicas
+        value: 20

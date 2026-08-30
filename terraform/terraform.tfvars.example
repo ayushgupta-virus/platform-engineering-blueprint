@@ -1,0 +1,40 @@
+# Copy to terraform.tfvars (or use environments/*.tfvars) and adjust values.
+# Never commit real secrets — prefer environment variables / CI secrets.
+
+environment = "staging"
+location    = "eastus"
+project     = "platblue"
+
+# Networking
+vnet_cidr = "10.20.0.0/16"
+
+# AKS
+kubernetes_version = "1.30"
+system_vm_size     = "Standard_D2s_v3"
+app_vm_size        = "Standard_D2s_v3"
+app_min_count      = 1
+app_max_count      = 4
+
+# Database
+postgres_sku_name              = "B_Standard_B1ms"
+postgres_storage_mb            = 32768
+postgres_admin_username        = "pgadmin"
+postgres_backup_retention_days = 7
+postgres_geo_redundant_backup  = false
+postgres_high_availability     = false
+
+# Container registry
+acr_sku = "Standard"
+
+# Monitoring / alerting
+enable_grafana     = true
+log_retention_days = 30
+alert_email        = "oncall@example.com"
+# slack_webhook_url is provided via TF_VAR_slack_webhook_url in CI, not here.
+
+# Security
+key_vault_purge_protection = false
+
+tags = {
+  owner = "platform-team"
+}

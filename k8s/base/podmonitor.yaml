@@ -1,0 +1,16 @@
+# PodMonitor for Azure Monitor managed Prometheus (CRD group azmonitoring.coreos.com).
+# Scrapes the /metrics endpoint so request rate, error rate and latency land in
+# the Azure Monitor workspace and are queryable from Grafana.
+apiVersion: azmonitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: todo-api
+  namespace: app
+spec:
+  selector:
+    matchLabels:
+      app: todo-api
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

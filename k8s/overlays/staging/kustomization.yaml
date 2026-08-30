@@ -1,0 +1,57 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: app
+
+resources:
+  - ../../base
+
+# The CD pipeline runs `kustomize edit set image` to pin the ACR image digest.
+images:
+  - name: todo-api
+    newName: acrplatbluestaging.azurecr.io/todo-api
+    newTag: latest
+
+# Environment-specific values. Placeholders marked __VALUE__ are substituted by
+# the CD pipeline from Terraform outputs before `kubectl apply`.
+patches:
+  - target:
+      kind: ConfigMap
+      name: todo-api-config
+    patch: |-
+      - op: replace
+        path: /data/APP_ENV
+        value: staging
+      - op: add
+        path: /data/PGHOST
+        value: __PGHOST__
+      - op: add
+        path: /data/PGUSER
+        value: __PGUSER__
+  - target:
+      kind: ServiceAccount
+      name: todo-api
+    patch: |-
+      - op: replace
+        path: /metadata/annotations/azure.workload.identity~1client-id
+        value: __WORKLOAD_CLIENT_ID__
+  - target:
+      kind: SecretProviderClass
+      name: todo-api-kv
+    patch: |-
+      - op: replace
+        path: /spec/parameters/clientID
+        value: __WORKLOAD_CLIENT_ID__
+      - op: replace
+        path: /spec/parameters/keyvaultName
+        value: __KEYVAULT_NAME__
+      - op: replace
+        path: /spec/parameters/tenantId
+        value: __TENANT_ID__
+  - target:
+      kind: Deployment
+      name: todo-api
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2

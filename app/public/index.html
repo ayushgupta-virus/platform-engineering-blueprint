@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Platform Blueprint — Todos</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: system-ui, sans-serif; max-width: 640px; margin: 3rem auto; padding: 0 1rem; }
+      h1 { font-size: 1.5rem; }
+      form { display: flex; gap: .5rem; margin: 1rem 0; }
+      input[type="text"] { flex: 1; padding: .5rem; }
+      button { padding: .5rem .9rem; cursor: pointer; }
+      ul { list-style: none; padding: 0; }
+      li { display: flex; align-items: center; gap: .5rem; padding: .4rem 0; border-bottom: 1px solid #8883; }
+      li.done span { text-decoration: line-through; opacity: .6; }
+      .del { margin-left: auto; }
+    </style>
+  </head>
+  <body>
+    <h1>Platform Engineering Blueprint — Todo Demo</h1>
+    <p>Small demo app used to exercise the Azure infrastructure, CI/CD, and monitoring stack.</p>
+    <form id="new-todo">
+      <input type="text" id="title" placeholder="What needs doing?" autocomplete="off" />
+      <button type="submit">Add</button>
+    </form>
+    <ul id="list"></ul>
+
+    <script>
+      const list = document.getElementById('list');
+      const form = document.getElementById('new-todo');
+      const titleInput = document.getElementById('title');
+
+      async function load() {
+        const res = await fetch('/todos');
+        const todos = await res.json();
+        list.innerHTML = '';
+        for (const t of todos) {
+          const li = document.createElement('li');
+          li.className = t.completed ? 'done' : '';
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = t.completed;
+          cb.onchange = () => toggle(t.id, cb.checked);
+          const span = document.createElement('span');
+          span.textContent = t.title;
+          const del = document.createElement('button');
+          del.textContent = '✕';
+          del.className = 'del';
+          del.onclick = () => remove(t.id);
+          li.append(cb, span, del);
+          list.appendChild(li);
+        }
+      }
+
+      async function toggle(id, completed) {
+        await fetch('/todos/' + id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed })
+        });
+        load();
+      }
+
+      async function remove(id) {
+        await fetch('/todos/' + id, { method: 'DELETE' });
+        load();
+      }
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const title = titleInput.value.trim();
+        if (!title) return;
+        await fetch('/todos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title })
+        });
+        titleInput.value = '';
+        load();
+      };
+
+      load();
+    </script>
+  </body>
+</html>

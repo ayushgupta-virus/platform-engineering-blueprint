@@ -1,0 +1,20 @@
+# Public Standard Load Balancer for the frontend (satisfies the "load balancer
+# for the frontend" requirement). AKS provisions an Azure Standard LB + public
+# IP for a Service of type LoadBalancer.
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-api
+  namespace: app
+  labels:
+    app: todo-api
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /health
+spec:
+  type: LoadBalancer
+  selector:
+    app: todo-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
