@@ -97,6 +97,20 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      # The image is built once in the staging/build ACR; copy it into the
+      # separate production ACR so the prod cluster can pull it.
+      - name: Import image into production ACR
+        run: |
+          DEST_ACR_NAME="${PROD_ACR_LOGIN_SERVER%%.*}"
+          az acr import \
+            --name "${DEST_ACR_NAME}" \
+            --source "${SRC_LOGIN_SERVER}/${IMAGE_NAME}:${IMAGE_TAG}" \
+            --image "${IMAGE_NAME}:${IMAGE_TAG}" \
+            --force
+        env:
+          PROD_ACR_LOGIN_SERVER: ${{ vars.PROD_ACR_LOGIN_SERVER }}
+          SRC_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+          IMAGE_TAG: ${{ needs.build-push.outputs.image_tag }}
       - name: Deploy
         uses: ./.github/actions/deploy-aks
         with:

@@ -7,26 +7,26 @@
 ###############################################################################
 
 resource "azurerm_virtual_network" "this" {
-  name                = "vnet-${var.name_prefix}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
+  name                = "vnet-${var.foundation.name_prefix}"
+  location            = var.foundation.location
+  resource_group_name = var.foundation.resource_group_name
   address_space       = [var.vnet_cidr]
-  tags                = var.tags
+  tags                = var.foundation.tags
 }
 
 # ---- Public / ingress tier -------------------------------------------------
 resource "azurerm_subnet" "public" {
   name                 = "snet-public"
-  resource_group_name  = var.resource_group_name
+  resource_group_name  = var.foundation.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = [var.public_subnet_cidr]
 }
 
 resource "azurerm_network_security_group" "public" {
-  name                = "nsg-public-${var.name_prefix}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
+  name                = "nsg-public-${var.foundation.name_prefix}"
+  location            = var.foundation.location
+  resource_group_name = var.foundation.resource_group_name
+  tags                = var.foundation.tags
 
   security_rule {
     name                       = "allow-https-inbound"
@@ -61,16 +61,16 @@ resource "azurerm_subnet_network_security_group_association" "public" {
 # ---- Private / AKS tier ----------------------------------------------------
 resource "azurerm_subnet" "aks" {
   name                 = "snet-aks"
-  resource_group_name  = var.resource_group_name
+  resource_group_name  = var.foundation.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = [var.aks_subnet_cidr]
 }
 
 resource "azurerm_network_security_group" "aks" {
-  name                = "nsg-aks-${var.name_prefix}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
+  name                = "nsg-aks-${var.foundation.name_prefix}"
+  location            = var.foundation.location
+  resource_group_name = var.foundation.resource_group_name
+  tags                = var.foundation.tags
 
   # Only allow traffic that originates inside the VNet (e.g. from the ingress
   # tier / load balancer). Deny everything else inbound from the internet.
@@ -119,7 +119,7 @@ resource "azurerm_subnet_network_security_group_association" "aks" {
 # ---- Private / database tier (delegated to PostgreSQL Flexible Server) ------
 resource "azurerm_subnet" "db" {
   name                 = "snet-db"
-  resource_group_name  = var.resource_group_name
+  resource_group_name  = var.foundation.resource_group_name
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = [var.db_subnet_cidr]
 
@@ -135,10 +135,10 @@ resource "azurerm_subnet" "db" {
 }
 
 resource "azurerm_network_security_group" "db" {
-  name                = "nsg-db-${var.name_prefix}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
+  name                = "nsg-db-${var.foundation.name_prefix}"
+  location            = var.foundation.location
+  resource_group_name = var.foundation.resource_group_name
+  tags                = var.foundation.tags
 
   # Only the AKS subnet may reach PostgreSQL on 5432.
   security_rule {

@@ -1,13 +1,11 @@
-variable "name_prefix" {
-  type = string
-}
-
-variable "resource_group_name" {
-  type = string
-}
-
-variable "location" {
-  type = string
+variable "foundation" {
+  description = "Shared config from the foundation module (naming, location, resource group, tags)."
+  type = object({
+    name_prefix         = string
+    location            = string
+    resource_group_name = string
+    tags                = map(string)
+  })
 }
 
 variable "log_retention_days" {
@@ -34,7 +32,3 @@ variable "slack_webhook_url" {
   sensitive   = true
 }
 
-variable "tags" {
-  type    = map(string)
-  default = {}
-}

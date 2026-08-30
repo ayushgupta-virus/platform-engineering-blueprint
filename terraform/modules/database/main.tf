@@ -5,24 +5,24 @@
 ###############################################################################
 
 resource "azurerm_private_dns_zone" "postgres" {
-  name                = "${var.name_prefix}.private.postgres.database.azure.com"
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
+  name                = "${var.foundation.name_prefix}.private.postgres.database.azure.com"
+  resource_group_name = var.foundation.resource_group_name
+  tags                = var.foundation.tags
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
-  name                  = "pdz-link-${var.name_prefix}"
+  name                  = "pdz-link-${var.foundation.name_prefix}"
   private_dns_zone_name = azurerm_private_dns_zone.postgres.name
-  resource_group_name   = var.resource_group_name
+  resource_group_name   = var.foundation.resource_group_name
   virtual_network_id    = var.vnet_id
   registration_enabled  = false
-  tags                  = var.tags
+  tags                  = var.foundation.tags
 }
 
 resource "azurerm_postgresql_flexible_server" "this" {
-  name                = "psql-${var.name_prefix}"
-  resource_group_name = var.resource_group_name
-  location            = var.location
+  name                = "psql-${var.foundation.name_prefix}"
+  resource_group_name = var.foundation.resource_group_name
+  location            = var.foundation.location
   version             = var.postgres_version
 
   administrator_login    = var.admin_username
@@ -46,7 +46,7 @@ resource "azurerm_postgresql_flexible_server" "this" {
     }
   }
 
-  tags = var.tags
+  tags = var.foundation.tags
 
   lifecycle {
     ignore_changes = [zone]
