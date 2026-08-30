@@ -3,12 +3,14 @@ variable "acr_name" {
   type        = string
 }
 
-variable "resource_group_name" {
-  type = string
-}
-
-variable "location" {
-  type = string
+variable "foundation" {
+  description = "Shared config from the foundation module (naming, location, resource group, tags)."
+  type = object({
+    name_prefix         = string
+    location            = string
+    resource_group_name = string
+    tags                = map(string)
+  })
 }
 
 variable "sku" {
@@ -27,9 +29,4 @@ variable "aks_kubelet_object_id" {
   description = "Kubelet identity object id granted AcrPull. Null to skip."
   type        = string
   default     = null
-}
-
-variable "tags" {
-  type    = map(string)
-  default = {}
 }

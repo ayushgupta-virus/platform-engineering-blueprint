@@ -7,12 +7,12 @@
 ###############################################################################
 
 resource "azurerm_kubernetes_cluster" "this" {
-  name                = "aks-${var.name_prefix}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  dns_prefix          = "aks-${var.name_prefix}"
+  name                = "aks-${var.foundation.name_prefix}"
+  location            = var.foundation.location
+  resource_group_name = var.foundation.resource_group_name
+  dns_prefix          = "aks-${var.foundation.name_prefix}"
   kubernetes_version  = var.kubernetes_version
-  node_resource_group = "rg-${var.name_prefix}-aks-nodes"
+  node_resource_group = "rg-${var.foundation.name_prefix}-aks-nodes"
 
   # Enable OIDC + workload identity for pod-level Azure AD auth (Key Vault CSI).
   oidc_issuer_enabled       = true
@@ -55,7 +55,7 @@ resource "azurerm_kubernetes_cluster" "this" {
   # Managed Prometheus addon (application metrics).
   monitor_metrics {}
 
-  tags = var.tags
+  tags = var.foundation.tags
 
   lifecycle {
     ignore_changes = [default_node_pool[0].node_count]
@@ -77,25 +77,25 @@ resource "azurerm_kubernetes_cluster_node_pool" "app" {
   node_labels = {
     "workload" = "application"
   }
-  tags = var.tags
+  tags = var.foundation.tags
 }
 
 # ---- Managed Prometheus data collection wiring -----------------------------
 resource "azurerm_monitor_data_collection_endpoint" "prometheus" {
-  name                = "dce-${var.name_prefix}"
-  resource_group_name = var.resource_group_name
-  location            = var.location
+  name                = "dce-${var.foundation.name_prefix}"
+  resource_group_name = var.foundation.resource_group_name
+  location            = var.foundation.location
   kind                = "Linux"
-  tags                = var.tags
+  tags                = var.foundation.tags
 }
 
 resource "azurerm_monitor_data_collection_rule" "prometheus" {
-  name                        = "dcr-prom-${var.name_prefix}"
-  resource_group_name         = var.resource_group_name
-  location                    = var.location
+  name                        = "dcr-prom-${var.foundation.name_prefix}"
+  resource_group_name         = var.foundation.resource_group_name
+  location                    = var.foundation.location
   data_collection_endpoint_id = azurerm_monitor_data_collection_endpoint.prometheus.id
   kind                        = "Linux"
-  tags                        = var.tags
+  tags                        = var.foundation.tags
 
   destinations {
     monitor_account {
@@ -118,7 +118,7 @@ resource "azurerm_monitor_data_collection_rule" "prometheus" {
 }
 
 resource "azurerm_monitor_data_collection_rule_association" "prometheus" {
-  name                    = "dcra-prom-${var.name_prefix}"
+  name                    = "dcra-prom-${var.foundation.name_prefix}"
   target_resource_id      = azurerm_kubernetes_cluster.this.id
   data_collection_rule_id = azurerm_monitor_data_collection_rule.prometheus.id
 }

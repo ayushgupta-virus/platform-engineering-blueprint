@@ -1,13 +1,11 @@
-variable "name_prefix" {
-  type = string
-}
-
-variable "location" {
-  type = string
-}
-
-variable "resource_group_name" {
-  type = string
+variable "foundation" {
+  description = "Shared config from the foundation module (naming, location, resource group, tags)."
+  type = object({
+    name_prefix         = string
+    location            = string
+    resource_group_name = string
+    tags                = map(string)
+  })
 }
 
 variable "aks_subnet_id" {
@@ -68,7 +66,3 @@ variable "monitor_workspace_id" {
   type        = string
 }
 
-variable "tags" {
-  type    = map(string)
-  default = {}
-}

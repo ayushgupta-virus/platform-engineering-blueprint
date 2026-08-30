@@ -8,29 +8,29 @@
 ###############################################################################
 
 resource "azurerm_log_analytics_workspace" "this" {
-  name                = "log-${var.name_prefix}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
+  name                = "log-${var.foundation.name_prefix}"
+  location            = var.foundation.location
+  resource_group_name = var.foundation.resource_group_name
   sku                 = "PerGB2018"
   retention_in_days   = var.log_retention_days
-  tags                = var.tags
+  tags                = var.foundation.tags
 }
 
 # Managed Prometheus metrics store for application metrics (request rate,
 # error rate, latency) scraped from the app's /metrics endpoint.
 resource "azurerm_monitor_workspace" "prometheus" {
-  name                = "amw-${var.name_prefix}"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  tags                = var.tags
+  name                = "amw-${var.foundation.name_prefix}"
+  resource_group_name = var.foundation.resource_group_name
+  location            = var.foundation.location
+  tags                = var.foundation.tags
 }
 
 # Managed Grafana instance for dashboards.
 resource "azurerm_dashboard_grafana" "this" {
   count                             = var.enable_grafana ? 1 : 0
-  name                              = "graf-${var.name_prefix}"
-  resource_group_name               = var.resource_group_name
-  location                          = var.location
+  name                              = "graf-${var.foundation.name_prefix}"
+  resource_group_name               = var.foundation.resource_group_name
+  location                          = var.foundation.location
   grafana_major_version             = 10
   api_key_enabled                   = true
   deterministic_outbound_ip_enabled = false
@@ -44,7 +44,7 @@ resource "azurerm_dashboard_grafana" "this" {
     resource_id = azurerm_monitor_workspace.prometheus.id
   }
 
-  tags = var.tags
+  tags = var.foundation.tags
 }
 
 # Let Grafana read metrics from the Azure Monitor (Prometheus) workspace.
@@ -57,10 +57,10 @@ resource "azurerm_role_assignment" "grafana_monitoring_reader" {
 
 # ---- Alerting --------------------------------------------------------------
 resource "azurerm_monitor_action_group" "notify" {
-  name                = "ag-${var.name_prefix}"
-  resource_group_name = var.resource_group_name
+  name                = "ag-${var.foundation.name_prefix}"
+  resource_group_name = var.foundation.resource_group_name
   short_name          = "platalert"
-  tags                = var.tags
+  tags                = var.foundation.tags
 
   dynamic "email_receiver" {
     for_each = var.alert_email == "" ? [] : [var.alert_email]

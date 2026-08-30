@@ -1,16 +1,11 @@
-variable "name_prefix" {
-  description = "Prefix applied to network resource names."
-  type        = string
-}
-
-variable "location" {
-  description = "Azure region."
-  type        = string
-}
-
-variable "resource_group_name" {
-  description = "Resource group that holds the network resources."
-  type        = string
+variable "foundation" {
+  description = "Shared config from the foundation module (naming, location, resource group, tags)."
+  type = object({
+    name_prefix         = string
+    location            = string
+    resource_group_name = string
+    tags                = map(string)
+  })
 }
 
 variable "vnet_cidr" {
@@ -35,10 +30,4 @@ variable "db_subnet_cidr" {
   description = "CIDR for the delegated PostgreSQL subnet."
   type        = string
   default     = "10.20.32.0/24"
-}
-
-variable "tags" {
-  description = "Tags applied to all network resources."
-  type        = map(string)
-  default     = {}
 }

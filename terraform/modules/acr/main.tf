@@ -6,12 +6,12 @@
 
 resource "azurerm_container_registry" "this" {
   name                = var.acr_name
-  resource_group_name = var.resource_group_name
-  location            = var.location
+  resource_group_name = var.foundation.resource_group_name
+  location            = var.foundation.location
   sku                 = var.sku
   # Disable admin user: pulls/pushes use AAD identities, not a shared password.
   admin_enabled = false
-  tags          = var.tags
+  tags          = var.foundation.tags
 
   dynamic "georeplications" {
     for_each = var.geo_replication_locations
